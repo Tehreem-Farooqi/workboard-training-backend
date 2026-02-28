@@ -1,0 +1,94 @@
+name: Microservices CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'api-gateway/**'
+      - 'auth-service/**'
+      - 'events-service/**'
+      - 'docker-compose.microservices.yml'
+      - '.github/workflows/microservices-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'api-gateway/**'
+      - 'auth-service/**'
+      - 'events-service/**'
+      - 'docker-compose.microservices.yml'
+      - '.github/workflows/microservices-ci.yml'
+
+jobs:
+  build-and-test:
+    name: Build & Test Microservices
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build services
+        run: docker-compose -f docker-compose.microservices.yml build
+
+      - name: Start services
+        run: docker-compose -f docker-compose.microservices.yml up -d
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to start..."
+          sleep 30
+          docker-compose -f docker-compose.microservices.yml ps
+
+      - name: Check API Gateway health
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:3000/auth/login > /dev/null 2>&1; then
+              echo "API Gateway is responding"
+              exit 0
+            fi
+            echo "Waiting for API Gateway... ($i/30)"
+            sleep 2
+          done
+          echo "API Gateway failed to start"
+          docker-compose -f docker-compose.microservices.yml logs
+          exit 1
+
+      - name: Run integration tests
+        run: |
+          echo "Testing signup..."
+          SIGNUP_RESPONSE=$(curl -s -X POST http://localhost:3000/auth/signup \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@example.com","password":"Test123!","firstName":"Test","lastName":"User","organizationName":"Test Org"}')
+          echo "Signup response: $SIGNUP_RESPONSE"
+          
+          echo "Testing login..."
+          LOGIN_RESPONSE=$(curl -s -X POST http://localhost:3000/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@example.com","password":"Test123!"}')
+          echo "Login response: $LOGIN_RESPONSE"
+          
+          TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+          
+          if [ -z "$TOKEN" ]; then
+            echo "Failed to get access token"
+            exit 1
+          fi
+          
+          echo "Testing create event..."
+          curl -s -X POST http://localhost:3000/events \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN" \
+            -d '{"title":"Test Event","description":"CI Test","location":"Online","startDate":"2026-05-01T10:00:00Z","endDate":"2026-05-01T12:00:00Z"}'
+          
+          echo "All integration tests passed!"
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker-compose -f docker-compose.microservices.yml logs
+
+      - name: Cleanup
+        if: always()
+        run: docker-compose -f docker-compose.microservices.yml down -v
