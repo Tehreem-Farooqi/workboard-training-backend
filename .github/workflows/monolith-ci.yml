@@ -61,7 +61,7 @@ jobs:
 
       - name: Run tests
         working-directory: monolith-api
-        run: npm run test:cov
+        run: npm run test
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           JWT_SECRET: test-secret-key
