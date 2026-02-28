@@ -1,0 +1,69 @@
+### Day 3 Testing - Logging, Request IDs, Health Endpoints
+
+### Test 1: Request with custom x-request-id
+POST http://localhost:3000/sample
+Content-Type: application/json
+x-request-id: custom-test-id-12345
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": 25
+}
+
+###
+
+### Test 2: Request without x-request-id (should generate one)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "age": 30
+}
+
+###
+
+### Test 3: Liveness probe
+GET http://localhost:3000/health/live
+
+###
+
+### Test 4: Readiness probe
+GET http://localhost:3000/health/ready
+
+###
+
+### Test 5: General health check
+GET http://localhost:3000/health
+
+###
+
+### Test 6: Test logging with error (invalid email)
+POST http://localhost:3000/sample
+Content-Type: application/json
+x-request-id: error-test-id
+
+{
+  "name": "Test User",
+  "email": "invalid-email",
+  "age": 25
+}
+
+###
+
+### Test 7: Multiple requests to see different request IDs
+GET http://localhost:3000
+
+###
+
+GET http://localhost:3000
+
+###
+
+GET http://localhost:3000
+
+###
+
+### Check response headers for x-request-id in all responses above

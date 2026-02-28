@@ -1,0 +1,99 @@
+### Day 2 Testing - DTOs, Validation, and Swagger
+### Use REST Client extension in VS Code or copy to Postman
+
+### Test 1: Valid Payload (Should return 201)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": 25
+}
+
+###
+
+### Test 2: Invalid Email (Should return 400)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "invalid-email",
+  "age": 25
+}
+
+###
+
+### Test 3: Missing Required Fields (Should return 400)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "age": 25
+}
+
+###
+
+### Test 4: Unknown Fields - forbidNonWhitelisted (Should return 400)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": 25,
+  "unknownField": "should be rejected",
+  "anotherUnknown": "also rejected"
+}
+
+###
+
+### Test 5: Invalid Age Range (Should return 400)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": 150
+}
+
+###
+
+### Test 6: Age Too Low (Should return 400)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": 0
+}
+
+###
+
+### Test 7: Wrong Type for Age (Should return 400)
+POST http://localhost:3000/sample
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": "twenty-five"
+}
+
+###
+
+### Test 8: Health Check (Should return 200)
+GET http://localhost:3000/health
+
+###
+
+### Test 9: Hello World (Should return 200)
+GET http://localhost:3000
+
+###
+
+### Swagger UI
+### Open in browser: http://localhost:3000/api

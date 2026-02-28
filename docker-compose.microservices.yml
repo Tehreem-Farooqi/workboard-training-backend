@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: eventboard-postgres
+    environment:
+      POSTGRES_USER: eventboard
+      POSTGRES_PASSWORD: eventboard_dev_password
+      POSTGRES_DB: eventboard_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: eventboard-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://eventboard:eventboard_dev_password@postgres:5432/eventboard_db
+      JWT_SECRET: your-secret-key-change-in-production
+      JWT_EXPIRY: 1h
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  events-service:
+    build:
+      context: ./events-service
+      dockerfile: Dockerfile
+    container_name: eventboard-events-service
+    ports:
+      - "3002:3002"
+    environment:
+      DATABASE_URL: postgresql://eventboard:eventboard_dev_password@postgres:5432/eventboard_db
+      PORT: 3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: eventboard-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      AUTH_SERVICE_HOST: auth-service
+      AUTH_SERVICE_PORT: 3001
+      EVENTS_SERVICE_HOST: events-service
+      EVENTS_SERVICE_PORT: 3002
+      JWT_SECRET: your-secret-key-change-in-production
+      PORT: 3000
+    depends_on:
+      - auth-service
+      - events-service
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

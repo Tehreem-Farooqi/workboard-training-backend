@@ -1,0 +1,107 @@
+### Day 9: Listing with Filters, Sort, Pagination, Search
+
+### Variables
+@baseUrl = http://localhost:3000
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+@userToken = YOUR_USER_TOKEN_HERE
+
+### 1. Login as admin to get token
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@acme.com",
+  "password": "Password123!"
+}
+
+### 2. Basic pagination - first page
+GET {{baseUrl}}/events?page=1&limit=5
+Authorization: Bearer {{adminToken}}
+
+### 3. Basic pagination - second page
+GET {{baseUrl}}/events?page=2&limit=5
+Authorization: Bearer {{adminToken}}
+
+### 4. Sort by title ascending
+GET {{baseUrl}}/events?sortBy=title&sortOrder=asc
+Authorization: Bearer {{adminToken}}
+
+### 5. Sort by start date descending
+GET {{baseUrl}}/events?sortBy=startDate&sortOrder=desc
+Authorization: Bearer {{adminToken}}
+
+### 6. Sort by status
+GET {{baseUrl}}/events?sortBy=status&sortOrder=asc
+Authorization: Bearer {{adminToken}}
+
+### 7. Sort by created date
+GET {{baseUrl}}/events?sortBy=createdAt&sortOrder=desc
+Authorization: Bearer {{adminToken}}
+
+### 8. Filter by status - DRAFT only
+GET {{baseUrl}}/events?status=DRAFT
+Authorization: Bearer {{adminToken}}
+
+### 9. Filter by status - APPROVED only
+GET {{baseUrl}}/events?status=APPROVED
+Authorization: Bearer {{adminToken}}
+
+### 10. Search in title and description
+GET {{baseUrl}}/events?search=conference
+Authorization: Bearer {{adminToken}}
+
+### 11. Search with pagination
+GET {{baseUrl}}/events?search=event&page=1&limit=3
+Authorization: Bearer {{adminToken}}
+
+### 12. Filter by date range - events starting in March 2026
+GET {{baseUrl}}/events?startDateFrom=2026-03-01T00:00:00Z&startDateTo=2026-03-31T23:59:59Z
+Authorization: Bearer {{adminToken}}
+
+### 13. Filter by date from (events starting after a date)
+GET {{baseUrl}}/events?startDateFrom=2026-03-15T00:00:00Z
+Authorization: Bearer {{adminToken}}
+
+### 14. Filter by date to (events starting before a date)
+GET {{baseUrl}}/events?startDateTo=2026-03-20T00:00:00Z
+Authorization: Bearer {{adminToken}}
+
+### 15. Combined filters - APPROVED events with search
+GET {{baseUrl}}/events?status=APPROVED&search=tech
+Authorization: Bearer {{adminToken}}
+
+### 16. Combined filters - date range + status + sort
+GET {{baseUrl}}/events?startDateFrom=2026-03-01T00:00:00Z&status=DRAFT&sortBy=startDate&sortOrder=asc
+Authorization: Bearer {{adminToken}}
+
+### 17. Full query - all parameters
+GET {{baseUrl}}/events?page=1&limit=10&sortBy=startDate&sortOrder=asc&status=DRAFT&search=event&startDateFrom=2026-01-01T00:00:00Z&startDateTo=2026-12-31T23:59:59Z
+Authorization: Bearer {{adminToken}}
+
+### 18. Test as regular user (sees only own events)
+GET {{baseUrl}}/events?page=1&limit=10
+Authorization: Bearer {{userToken}}
+
+### 19. Test pagination metadata - check hasNext/hasPrevious
+GET {{baseUrl}}/events?page=1&limit=2
+Authorization: Bearer {{adminToken}}
+
+### 20. Test max limit (100)
+GET {{baseUrl}}/events?limit=100
+Authorization: Bearer {{adminToken}}
+
+### 21. Test invalid page (should default to 1)
+GET {{baseUrl}}/events?page=0
+Authorization: Bearer {{adminToken}}
+
+### 22. Test invalid limit (should be validated)
+GET {{baseUrl}}/events?limit=101
+Authorization: Bearer {{adminToken}}
+
+### 23. Case-insensitive search
+GET {{baseUrl}}/events?search=CONFERENCE
+Authorization: Bearer {{adminToken}}
+
+### 24. Empty search results
+GET {{baseUrl}}/events?search=nonexistentterm12345
+Authorization: Bearer {{adminToken}}

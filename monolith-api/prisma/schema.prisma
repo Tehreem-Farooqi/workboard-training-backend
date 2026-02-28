@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users  User[]
+  events Event[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           UserRole     @default(USER)
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       Event[]
+
+  @@index([email])
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Event {
+  id              String      @id @default(uuid())
+  title           String
+  description     String
+  location        String?
+  startDate       DateTime
+  endDate         DateTime
+  status          EventStatus @default(DRAFT)
+  rejectionReason String?
+  organizationId  String
+  createdById     String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([createdById])
+  @@index([status])
+  @@index([startDate])
+  @@map("events")
+}

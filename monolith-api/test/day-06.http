@@ -1,0 +1,106 @@
+### Day 6 Testing - RBAC Authorization
+
+### Step 1: Login as Admin
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@acme.com",
+  "password": "Password123!"
+}
+
+### Copy admin token from response above
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+
+###
+
+### Step 2: Login as Moderator
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "moderator@acme.com",
+  "password": "Password123!"
+}
+
+### Copy moderator token from response above
+@moderatorToken = YOUR_MODERATOR_TOKEN_HERE
+
+###
+
+### Step 3: Login as Regular User
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@acme.com",
+  "password": "Password123!"
+}
+
+### Copy user token from response above
+@userToken = YOUR_USER_TOKEN_HERE
+
+###
+
+### Test 4: Admin-only endpoint WITHOUT token (Should return 401)
+GET http://localhost:3000/auth/admin-only
+
+###
+
+### Test 5: Admin-only endpoint WITH invalid token (Should return 401)
+GET http://localhost:3000/auth/admin-only
+Authorization: Bearer invalid-token-here
+
+###
+
+### Test 6: Admin-only endpoint as USER (Should return 403 Forbidden)
+GET http://localhost:3000/auth/admin-only
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 7: Admin-only endpoint as MODERATOR (Should return 403 Forbidden)
+GET http://localhost:3000/auth/admin-only
+Authorization: Bearer {{moderatorToken}}
+
+###
+
+### Test 8: Admin-only endpoint as ADMIN (Should return 200 OK)
+GET http://localhost:3000/auth/admin-only
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 9: Moderator-only endpoint WITHOUT token (Should return 401)
+GET http://localhost:3000/auth/moderator-only
+
+###
+
+### Test 10: Moderator-only endpoint as USER (Should return 403 Forbidden)
+GET http://localhost:3000/auth/moderator-only
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 11: Moderator-only endpoint as MODERATOR (Should return 200 OK)
+GET http://localhost:3000/auth/moderator-only
+Authorization: Bearer {{moderatorToken}}
+
+###
+
+### Test 12: Moderator-only endpoint as ADMIN (Should return 200 OK)
+GET http://localhost:3000/auth/moderator-only
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 13: /me endpoint as any authenticated user (Should return 200 OK)
+GET http://localhost:3000/auth/me
+Authorization: Bearer {{userToken}}
+
+###
+
+### Expected Results:
+### - 401 Unauthorized: No token or invalid token
+### - 403 Forbidden: Valid token but insufficient role
+### - 200 OK: Valid token with required role

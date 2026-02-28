@@ -1,0 +1,132 @@
+### Day 7 Testing - Events CRUD (Org-scoped + Ownership)
+
+### Step 1: Login as User
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@acme.com",
+  "password": "Password123!"
+}
+
+### Copy token
+@userToken = YOUR_USER_TOKEN_HERE
+
+###
+
+### Step 2: Login as Admin
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@acme.com",
+  "password": "Password123!"
+}
+
+### Copy token
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+
+###
+
+### Test 3: Create Event as User
+POST http://localhost:3000/events
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "title": "Team Building Workshop",
+  "description": "A fun day of team building activities and games",
+  "location": "Office Conference Room",
+  "startDate": "2026-04-20T10:00:00Z",
+  "endDate": "2026-04-20T16:00:00Z"
+}
+
+### Copy event ID from response
+@eventId = YOUR_EVENT_ID_HERE
+
+###
+
+### Test 4: Get All Events as User (should see only own events)
+GET http://localhost:3000/events
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 5: Get All Events as Admin (should see all org events)
+GET http://localhost:3000/events
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 6: Get Single Event
+GET http://localhost:3000/events/{{eventId}}
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 7: Update Own Event (should succeed)
+PATCH http://localhost:3000/events/{{eventId}}
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "title": "Updated Team Building Workshop",
+  "location": "Outdoor Park"
+}
+
+###
+
+### Test 8: Delete Own Event (should succeed)
+DELETE http://localhost:3000/events/{{eventId}}
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 9: Try to update someone else's event (should fail with 403)
+### First, get an event ID from admin's events
+GET http://localhost:3000/events
+Authorization: Bearer {{adminToken}}
+
+### Then try to update it as regular user
+PATCH http://localhost:3000/events/00000000-0000-0000-0000-000000000001
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "title": "Trying to hack this event"
+}
+
+###
+
+### Test 10: Create Event with Invalid Dates (should fail)
+POST http://localhost:3000/events
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "title": "Invalid Event",
+  "description": "This should fail because end date is before start date",
+  "startDate": "2026-04-20T16:00:00Z",
+  "endDate": "2026-04-20T10:00:00Z"
+}
+
+###
+
+### Test 11: Create Event without Auth (should fail with 401)
+POST http://localhost:3000/events
+Content-Type: application/json
+
+{
+  "title": "Unauthorized Event",
+  "description": "This should fail",
+  "startDate": "2026-04-20T10:00:00Z",
+  "endDate": "2026-04-20T16:00:00Z"
+}
+
+###
+
+### Expected Results:
+### - Users can only see/edit/delete their own draft events
+### - Admins can see all events in their organization
+### - Events are isolated by organizationId
+### - Proper 401/403/404 responses

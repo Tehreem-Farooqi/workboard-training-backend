@@ -1,0 +1,167 @@
+### Day 8 Testing - Moderation Workflow (State Transitions)
+
+### Step 1: Login as User
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@acme.com",
+  "password": "Password123!"
+}
+
+### Copy token
+@userToken = YOUR_USER_TOKEN_HERE
+
+###
+
+### Step 2: Login as Moderator
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "moderator@acme.com",
+  "password": "Password123!"
+}
+
+### Copy token
+@moderatorToken = YOUR_MODERATOR_TOKEN_HERE
+
+###
+
+### Test 3: Create Draft Event
+POST http://localhost:3000/events
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "title": "Community Meetup",
+  "description": "Monthly community meetup for tech enthusiasts",
+  "location": "Community Center",
+  "startDate": "2026-05-15T18:00:00Z",
+  "endDate": "2026-05-15T21:00:00Z"
+}
+
+### Copy event ID
+@eventId = YOUR_EVENT_ID_HERE
+
+###
+
+### Test 4: Submit Event for Review (DRAFT → SUBMITTED)
+POST http://localhost:3000/events/{{eventId}}/submit
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 5: Try to Submit Again (Should fail with 409)
+POST http://localhost:3000/events/{{eventId}}/submit
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 6: Try to Approve as Regular User (Should fail with 403)
+POST http://localhost:3000/events/{{eventId}}/approve
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 7: Approve Event as Moderator (SUBMITTED → APPROVED)
+POST http://localhost:3000/events/{{eventId}}/approve
+Authorization: Bearer {{moderatorToken}}
+
+###
+
+### Test 8: Try to Reject Approved Event (Should fail with 409)
+POST http://localhost:3000/events/{{eventId}}/reject
+Content-Type: application/json
+Authorization: Bearer {{moderatorToken}}
+
+{
+  "reason": "This should fail because event is already approved"
+}
+
+###
+
+### Test 9: Create and Submit Another Event
+POST http://localhost:3000/events
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "title": "Test Event for Rejection",
+  "description": "This event will be rejected to test the workflow",
+  "startDate": "2026-06-01T10:00:00Z",
+  "endDate": "2026-06-01T16:00:00Z"
+}
+
+### Copy new event ID
+@eventId2 = YOUR_EVENT_ID_2_HERE
+
+###
+
+### Test 10: Submit Second Event
+POST http://localhost:3000/events/{{eventId2}}/submit
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 11: Reject Event with Reason (SUBMITTED → REJECTED)
+POST http://localhost:3000/events/{{eventId2}}/reject
+Content-Type: application/json
+Authorization: Bearer {{moderatorToken}}
+
+{
+  "reason": "Event does not meet community guidelines. Please provide more details about the event."
+}
+
+###
+
+### Test 12: Get Rejected Event (Should show rejection reason)
+GET http://localhost:3000/events/{{eventId2}}
+Authorization: Bearer {{userToken}}
+
+###
+
+### Test 13: Try to Reject without Reason (Should fail with 400)
+POST http://localhost:3000/events/{{eventId2}}/reject
+Content-Type: application/json
+Authorization: Bearer {{moderatorToken}}
+
+{
+  "reason": ""
+}
+
+###
+
+### Test 14: Try to Approve Draft Event (Should fail with 409)
+POST http://localhost:3000/events
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "title": "Draft Event",
+  "description": "This will stay in draft",
+  "startDate": "2026-07-01T10:00:00Z",
+  "endDate": "2026-07-01T16:00:00Z"
+}
+
+### Copy draft event ID
+@draftEventId = YOUR_DRAFT_EVENT_ID_HERE
+
+###
+
+POST http://localhost:3000/events/{{draftEventId}}/approve
+Authorization: Bearer {{moderatorToken}}
+
+###
+
+### Expected State Transitions:
+### DRAFT → SUBMITTED (user submits)
+### SUBMITTED → APPROVED (moderator/admin approves)
+### SUBMITTED → REJECTED (moderator/admin rejects with reason)
+###
+### Invalid Transitions (should return 409):
+### SUBMITTED → SUBMITTED
+### APPROVED → REJECTED
+### REJECTED → APPROVED
+### DRAFT → APPROVED
+### DRAFT → REJECTED

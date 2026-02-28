@@ -1,0 +1,187 @@
+### Day 14: Production Readiness Tests
+### Timeouts, Retries, Correlation IDs, Idempotency
+
+@baseUrl = http://localhost:3000
+@adminEmail = admin@acme.com
+@moderatorEmail = moderator@acme.com
+@userEmail = user@acme.com
+@password = Password123!
+
+### 1. Test Correlation ID - Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-Correlation-ID: test-correlation-123
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{password}}"
+}
+
+### 2. Save admin token
+@adminToken = {{1.response.body.accessToken}}
+
+### 3. Test Correlation ID - Get Me
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{adminToken}}
+X-Correlation-ID: test-correlation-456
+
+### 4. Login as User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{password}}"
+}
+
+### 5. Save user token
+@userToken = {{4.response.body.accessToken}}
+
+### 6. Create Event with Idempotency Key (First Time)
+POST {{baseUrl}}/events
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+Idempotency-Key: create-event-unique-123
+X-Correlation-ID: create-event-trace-1
+
+{
+  "title": "Idempotency Test Event",
+  "description": "Testing idempotency feature",
+  "startDate": "2026-06-01T10:00:00Z",
+  "endDate": "2026-06-01T16:00:00Z",
+  "location": "Test Room"
+}
+
+### 7. Save event ID
+@eventId = {{6.response.body.id}}
+
+### 8. Create Event with Same Idempotency Key (Should Return Cached)
+POST {{baseUrl}}/events
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+Idempotency-Key: create-event-unique-123
+X-Correlation-ID: create-event-trace-2
+
+{
+  "title": "Idempotency Test Event",
+  "description": "Testing idempotency feature",
+  "startDate": "2026-06-01T10:00:00Z",
+  "endDate": "2026-06-01T16:00:00Z",
+  "location": "Test Room"
+}
+
+### 9. Submit Event with Idempotency Key (First Time)
+POST {{baseUrl}}/events/{{eventId}}/submit
+Authorization: Bearer {{userToken}}
+Idempotency-Key: submit-event-unique-456
+X-Correlation-ID: submit-event-trace-1
+
+### 10. Submit Event with Same Idempotency Key (Should Return Cached)
+POST {{baseUrl}}/events/{{eventId}}/submit
+Authorization: Bearer {{userToken}}
+Idempotency-Key: submit-event-unique-456
+X-Correlation-ID: submit-event-trace-2
+
+### 11. Login as Moderator
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{moderatorEmail}}",
+  "password": "{{password}}"
+}
+
+### 12. Save moderator token
+@moderatorToken = {{11.response.body.accessToken}}
+
+### 13. Approve Event with Idempotency Key (First Time)
+POST {{baseUrl}}/events/{{eventId}}/approve
+Authorization: Bearer {{moderatorToken}}
+Idempotency-Key: approve-event-unique-789
+X-Correlation-ID: approve-event-trace-1
+
+### 14. Approve Event with Same Idempotency Key (Should Return Cached)
+POST {{baseUrl}}/events/{{eventId}}/approve
+Authorization: Bearer {{moderatorToken}}
+Idempotency-Key: approve-event-unique-789
+X-Correlation-ID: approve-event-trace-2
+
+### 15. List Events with Correlation ID
+GET {{baseUrl}}/events?page=1&limit=10
+Authorization: Bearer {{userToken}}
+X-Correlation-ID: list-events-trace-1
+
+### 16. Get Event by ID with Correlation ID
+GET {{baseUrl}}/events/{{eventId}}
+Authorization: Bearer {{userToken}}
+X-Correlation-ID: get-event-trace-1
+
+### 17. Create Another Event for Rejection Test
+POST {{baseUrl}}/events
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+Idempotency-Key: create-reject-event-123
+
+{
+  "title": "Event to Reject",
+  "description": "This event will be rejected",
+  "startDate": "2026-07-01T10:00:00Z",
+  "endDate": "2026-07-01T16:00:00Z"
+}
+
+### 18. Save reject event ID
+@rejectEventId = {{17.response.body.id}}
+
+### 19. Submit Event for Rejection
+POST {{baseUrl}}/events/{{rejectEventId}}/submit
+Authorization: Bearer {{userToken}}
+Idempotency-Key: submit-reject-event-456
+
+### 20. Reject Event with Idempotency Key (First Time)
+POST {{baseUrl}}/events/{{rejectEventId}}/reject
+Authorization: Bearer {{moderatorToken}}
+Content-Type: application/json
+Idempotency-Key: reject-event-unique-999
+X-Correlation-ID: reject-event-trace-1
+
+{
+  "reason": "Event does not meet quality standards for approval"
+}
+
+### 21. Reject Event with Same Idempotency Key (Should Return Cached)
+POST {{baseUrl}}/events/{{rejectEventId}}/reject
+Authorization: Bearer {{moderatorToken}}
+Content-Type: application/json
+Idempotency-Key: reject-event-unique-999
+X-Correlation-ID: reject-event-trace-2
+
+{
+  "reason": "Event does not meet quality standards for approval"
+}
+
+### 22. Test Multiple Correlation IDs in Sequence
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-Correlation-ID: seq-1
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{password}}"
+}
+
+### 23. Continue Sequence
+GET {{baseUrl}}/events
+Authorization: Bearer {{adminToken}}
+X-Correlation-ID: seq-2
+
+### 24. Continue Sequence
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{adminToken}}
+X-Correlation-ID: seq-3
+
+### Notes:
+# - Check response headers for X-Correlation-ID
+# - Verify idempotency by comparing response IDs (should be same)
+# - Check logs: docker-compose logs | grep "test-correlation-123"
+# - Verify retry behavior by stopping a service temporarily
+# - Test timeout by stopping events-service and trying to list events
