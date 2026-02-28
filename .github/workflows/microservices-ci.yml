@@ -31,16 +31,16 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build services
-        run: docker-compose -f docker-compose.microservices.yml build
+        run: docker compose -f docker-compose.microservices.yml build
 
       - name: Start services
-        run: docker-compose -f docker-compose.microservices.yml up -d
+        run: docker compose -f docker-compose.microservices.yml up -d
 
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to start..."
           sleep 30
-          docker-compose -f docker-compose.microservices.yml ps
+          docker compose -f docker-compose.microservices.yml ps
 
       - name: Check API Gateway health
         run: |
@@ -87,8 +87,8 @@ jobs:
 
       - name: Show logs on failure
         if: failure()
-        run: docker-compose -f docker-compose.microservices.yml logs
+        run: docker compose -f docker-compose.microservices.yml logs
 
       - name: Cleanup
         if: always()
-        run: docker-compose -f docker-compose.microservices.yml down -v
+        run: docker compose -f docker-compose.microservices.yml down -v
